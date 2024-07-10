@@ -62,7 +62,7 @@ static int disconnect_server    ( int argc, char *argv[], tlv_buffer_t** data );
  *                      Macros
  ******************************************************/
 #define WIFI_ENTERPRISE_SECURITY_COMMANDS \
-        { (char*) "join_ent", join_ent, 0, NULL, NULL, (char*) "<ssid> <eap_tls> [username] [password] [eap] <wpa_aes|wpa_mixed|wpa2_aes|wpa2_mixed|wpa3_aes_ccmp|wpa3_aes_gcm|wpa3_192bit>", (char*) "Join an AP using an enterprise EAP method. DHCP assumed."}, \
+        { (char*) "join_ent", join_ent, 0, NULL, NULL, (char*) "<ssid> <eap_tls|peap> [username] [password] [eap] <wpa_aes|wpa_mixed|wpa2_aes|wpa2_mixed|wpa3_aes_ccmp|wpa3_aes_gcm|wpa3_192bit>", (char*) "Join an AP using an enterprise EAP method. DHCP assumed."}, \
         { (char*) "leave_ent", leave_ent, 0, NULL, NULL, (char*) "", (char*) "Leaves an enterprise AP and stops processing enterprise security events."}, \
         { (char*) "start_echo_server", start_echo_server, 0, NULL, NULL, (char*) "<tcp_port_number>", (char*) "Start TCP Echo server on the port number."}, \
         { (char*) "stop_echo_server", stop_echo_server, 0, NULL, NULL, (char*) "", (char*) "Stop TCP Echo server."}, \
@@ -108,6 +108,14 @@ static cy_enterprise_security_eap_type_t str_to_enterprise_security_type( char* 
     if( strcmp( arg, "eap_tls" ) == 0 )
     {
         ret = CY_ENTERPRISE_SECURITY_EAP_TYPE_TLS;
+    }
+    else if( strcmp( arg, "peap" ) == 0 )
+    {
+        ret = CY_ENTERPRISE_SECURITY_EAP_TYPE_PEAP;
+    }
+    else if( strcmp( arg, "mschapv2" ) == 0 )
+    {
+        ret = CY_ENTERPRISE_SECURITY_EAP_TYPE_MSCHAPV2;
     }
     else
     {
@@ -260,6 +268,7 @@ static int join_ent( int argc, char *argv[], tlv_buffer_t** data )
     cy_enterprise_security_eap_type_t  eap_type;
     cy_enterprise_security_auth_t auth_type;
     char *username = NULL;
+    char *password = NULL;
 
     if( argc < 4 )
     {
@@ -273,19 +282,28 @@ static int join_ent( int argc, char *argv[], tlv_buffer_t** data )
     if( eap_type == CY_ENTERPRISE_SECURITY_EAP_TYPE_NONE )
     {
         ENT_SEC_INFO( ( "Unknown security type\n" ) );
-        /* Fall-through: Allow invalid/unknown security type to be passed to the library. */
+        return ERR_BAD_ARG;
+    }
+
+    if( ( eap_type == CY_ENTERPRISE_SECURITY_EAP_TYPE_PEAP ) && ( argc < 6 ) )
+    {
+        return ERR_INSUFFICENT_ARGS;
     }
 
     auth_type = str_to_enterprise_authtype( argv[ argc - 1 ] );
     if( auth_type == CY_ENTERPRISE_SECURITY_AUTH_TYPE_UNKNOWN )
     {
         ENT_SEC_INFO( ("Unknown auth type\n" ) );
-        /* Fall-through: Allow invalid/unknown auth type to be passed to the library. */
+        return ERR_BAD_ARG;
     }
+
+    memset(&ent_parameters, 0, sizeof(cy_enterprise_security_parameters_t));
 
     ent_parameters.is_client_cert_required = 0;
 
-    if( eap_type == CY_ENTERPRISE_SECURITY_EAP_TYPE_TLS )
+    if( ( eap_type == CY_ENTERPRISE_SECURITY_EAP_TYPE_PEAP ) ||
+            ( eap_type == CY_ENTERPRISE_SECURITY_EAP_TYPE_TTLS ) ||
+            ( eap_type == CY_ENTERPRISE_SECURITY_EAP_TYPE_TLS ) )
     {
         username = argv[ 3 ];
 
@@ -296,6 +314,14 @@ static int join_ent( int argc, char *argv[], tlv_buffer_t** data )
         if( eap_type == CY_ENTERPRISE_SECURITY_EAP_TYPE_TLS )
         {
             ent_parameters.is_client_cert_required = 1;
+        }
+        else if( eap_type == CY_ENTERPRISE_SECURITY_EAP_TYPE_PEAP )
+        {
+            password = argv[ 4 ];
+            ent_parameters.phase2.inner_eap_type = CY_ENTERPRISE_SECURITY_EAP_TYPE_MSCHAPV2;
+            ent_parameters.phase2.tunnel_auth_type = CY_ENTERPRISE_SECURITY_TUNNEL_TYPE_MSCHAPV2;
+            strncpy( ent_parameters.phase2.inner_password, password, CY_ENTERPRISE_SECURITY_MAX_PASSWORD_LENGTH );
+            ent_parameters.phase2.inner_password[ CY_ENTERPRISE_SECURITY_MAX_PASSWORD_LENGTH - 1 ] = '\0';
         }
     }
 
