@@ -36,7 +36,7 @@
 extern "C" {
 #endif
 
-// WPA3 192Bit
+/* WPA3 192Bit */
 #define WPA3_192BIT_ROOT_CERTIFICATE_STRING  \
 "-----BEGIN CERTIFICATE-----\r\n" \
 "-----END CERTIFICATE-----\r\n";

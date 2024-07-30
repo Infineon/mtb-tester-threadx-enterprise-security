@@ -47,7 +47,7 @@
 #include "ent_sec_utility.h"
 #include <inttypes.h>
 
-#define THREAD_STACK 4*1024
+#define THREAD_STACK (4*1024)
 static cy_thread_t nxs_thread;
 static uint64_t nxs_stack[(THREAD_STACK)/sizeof(uint64_t)];
 
@@ -168,9 +168,9 @@ int main(void)
 
     /* \x1b[2J\x1b[;H - ANSI ESC sequence to clear screen. */
     printf("\x1b[2J\x1b[;H");
-    printf("*****************************\r\n");
-    printf("Enterprise Tester application\r\n");
-    printf("*****************************\r\n");
+    printf("**********************************************\r\n");
+    printf("Enterprise security Tester App : %s\r\n", (ENT_TESTER_APP_VERSION));
+    printf("**********************************************\r\n");
 
     result = cy_rtos_thread_create(&nxs_thread,
                                    &console_task,

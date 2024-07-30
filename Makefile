@@ -106,6 +106,11 @@ DEFINES+=COMPONENT_WIFI_INTERFACE_OCI CYBSP_WIFI_CAPABLE HAVE_SNPRINTF CY_RTOS_A
 COMPONENTS+=NETXSECURE_WPA3
 DISABLE_COMPONENTS+=NETXSECURE_ROM
 
+# Application Version
+file := version.xml
+ENT_TESTER_APP_VERSION_STR :=  $(shell sed -n '1 p' ${file} | sed -e 's/<version>//g' -e 's/<\/version>//')
+DEFINES+=ENT_TESTER_APP_VERSION='"$(ENT_TESTER_APP_VERSION_STR)"'
+
 # Select softfp or hardfp floating point. Default is softfp.
 VFP_SELECT=
 

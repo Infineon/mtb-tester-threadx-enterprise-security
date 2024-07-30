@@ -13,6 +13,7 @@ See the command console library [Readme.md](https://github.com/Infineon/command-
 ## Supported EAP Security protocols
 * EAP TLS
 * PEAPv0 with MSCHAPv2
+* EAP-TTLS with EAP-MSCHAPv2
 
 ## Supported Enterprise Security Modes
 * WPA
@@ -187,11 +188,11 @@ For a list of supported IDEs and more details, see the "Exporting to IDEs" secti
     1. **join_ent** : This command will connect the device to enterprise Wi-Fi network.
 
     ```
-    join_ent <ssid> <eap_protocol> [username] [password] [eap] <wifi auth_type>
+    join_ent <ssid> <eap_protocol> [username] [password] <wifi auth_type>
     ```
     Example:
     ```
-    join_ent WIFI_SSID eap_tls user pass eap wpa2_aes
+    join_ent WIFI_SSID eap_tls user pass wpa2_aes
     ```
 
     **Enterprise Join Example**
@@ -204,8 +205,9 @@ For a list of supported IDEs and more details, see the "Exporting to IDEs" secti
     * `wpa3_192bit`:   WPA3-Enterprise 192-bit mode
 
     **Note2**: EAP security protocols :
-    * `eap_tls`: EAP TLS
-    * `peap`   : PEAPv0 with MSCHAPv2
+    * `eap_tls`  : EAP TLS
+    * `peap`     : PEAPv0 with MSCHAPv2
+    * `eap_ttls` : EAP-TTLS with EAP-MSCHAPv2
 
     2. **leave_ent** : Leave from the connected enterprise Wi-Fi network.
 
@@ -284,5 +286,6 @@ Document title: Enterprise Security Tester App
 
 | Version | Description of change |
 | ------- | --------------------- |
-| 1.1.0   | Added PEAP commands   |
+| 1.2.0   | Added EAP-TTLS command   |
+| 1.1.0   | Added PEAP command   |
 | 1.0.0   | Initial version with EAP TLS support. |

@@ -62,7 +62,7 @@ static int disconnect_server    ( int argc, char *argv[], tlv_buffer_t** data );
  *                      Macros
  ******************************************************/
 #define WIFI_ENTERPRISE_SECURITY_COMMANDS \
-        { (char*) "join_ent", join_ent, 0, NULL, NULL, (char*) "<ssid> <eap_tls|peap> [username] [password] [eap] <wpa_aes|wpa_mixed|wpa2_aes|wpa2_mixed|wpa3_aes_ccmp|wpa3_aes_gcm|wpa3_192bit>", (char*) "Join an AP using an enterprise EAP method. DHCP assumed."}, \
+        { (char*) "join_ent", join_ent, 0, NULL, NULL, (char*) "<ssid> <eap_tls|peap|eap_ttls> [username] [password] <wpa_aes|wpa_mixed|wpa2_aes|wpa2_mixed|wpa3_aes_ccmp|wpa3_aes_gcm|wpa3_192bit>", (char*) "Join an AP using an enterprise EAP method. DHCP assumed."}, \
         { (char*) "leave_ent", leave_ent, 0, NULL, NULL, (char*) "", (char*) "Leaves an enterprise AP and stops processing enterprise security events."}, \
         { (char*) "start_echo_server", start_echo_server, 0, NULL, NULL, (char*) "<tcp_port_number>", (char*) "Start TCP Echo server on the port number."}, \
         { (char*) "stop_echo_server", stop_echo_server, 0, NULL, NULL, (char*) "", (char*) "Stop TCP Echo server."}, \
@@ -86,6 +86,7 @@ static const cy_command_console_cmd_t ent_sec_command_table[] =
 
 static cy_enterprise_security_parameters_t ent_parameters;
 static cy_enterprise_security_t handle;
+
 
 /*******************************************************************************
  * Function Name: str_to_enterprise_security_type
@@ -113,9 +114,9 @@ static cy_enterprise_security_eap_type_t str_to_enterprise_security_type( char* 
     {
         ret = CY_ENTERPRISE_SECURITY_EAP_TYPE_PEAP;
     }
-    else if( strcmp( arg, "mschapv2" ) == 0 )
+    else if( strcmp( arg, "eap_ttls" ) == 0 )
     {
-        ret = CY_ENTERPRISE_SECURITY_EAP_TYPE_MSCHAPV2;
+        return CY_ENTERPRISE_SECURITY_EAP_TYPE_TTLS;
     }
     else
     {
@@ -285,7 +286,8 @@ static int join_ent( int argc, char *argv[], tlv_buffer_t** data )
         return ERR_BAD_ARG;
     }
 
-    if( ( eap_type == CY_ENTERPRISE_SECURITY_EAP_TYPE_PEAP ) && ( argc < 6 ) )
+    if( ( eap_type == CY_ENTERPRISE_SECURITY_EAP_TYPE_PEAP  || eap_type == CY_ENTERPRISE_SECURITY_EAP_TYPE_TTLS )
+            && ( argc < 5 ) )
     {
         return ERR_INSUFFICENT_ARGS;
     }
@@ -299,33 +301,42 @@ static int join_ent( int argc, char *argv[], tlv_buffer_t** data )
 
     memset(&ent_parameters, 0, sizeof(cy_enterprise_security_parameters_t));
 
-    ent_parameters.is_client_cert_required = 0;
+    username = argv[ 3 ];
 
     if( ( eap_type == CY_ENTERPRISE_SECURITY_EAP_TYPE_PEAP ) ||
             ( eap_type == CY_ENTERPRISE_SECURITY_EAP_TYPE_TTLS ) ||
             ( eap_type == CY_ENTERPRISE_SECURITY_EAP_TYPE_TLS ) )
     {
-        username = argv[ 3 ];
-
         /* Copy phase2 identity */
         strncpy( ent_parameters.phase2.inner_identity, username, CY_ENTERPRISE_SECURITY_MAX_IDENTITY_LENGTH );
         ent_parameters.phase2.inner_identity[ CY_ENTERPRISE_SECURITY_MAX_IDENTITY_LENGTH - 1 ] = '\0';
 
-        if( eap_type == CY_ENTERPRISE_SECURITY_EAP_TYPE_TLS )
-        {
-            ent_parameters.is_client_cert_required = 1;
-        }
-        else if( eap_type == CY_ENTERPRISE_SECURITY_EAP_TYPE_PEAP )
+        if( ( eap_type == CY_ENTERPRISE_SECURITY_EAP_TYPE_PEAP )  || ( eap_type == CY_ENTERPRISE_SECURITY_EAP_TYPE_TTLS ) )
         {
             password = argv[ 4 ];
-            ent_parameters.phase2.inner_eap_type = CY_ENTERPRISE_SECURITY_EAP_TYPE_MSCHAPV2;
-            ent_parameters.phase2.tunnel_auth_type = CY_ENTERPRISE_SECURITY_TUNNEL_TYPE_MSCHAPV2;
             strncpy( ent_parameters.phase2.inner_password, password, CY_ENTERPRISE_SECURITY_MAX_PASSWORD_LENGTH );
             ent_parameters.phase2.inner_password[ CY_ENTERPRISE_SECURITY_MAX_PASSWORD_LENGTH - 1 ] = '\0';
+
+            ent_parameters.phase2.inner_eap_type   = CY_ENTERPRISE_SECURITY_EAP_TYPE_MSCHAPV2;
+
+            if ( eap_type == CY_ENTERPRISE_SECURITY_EAP_TYPE_PEAP )
+            {
+                /* PEAP Tunnel type MSCHAPV2 */
+                ent_parameters.phase2.tunnel_auth_type = CY_ENTERPRISE_SECURITY_TUNNEL_TYPE_MSCHAPV2;
+            }
+            else
+            {
+                /* TTLS Tunnel type EAP */
+                ent_parameters.phase2.tunnel_auth_type = CY_ENTERPRISE_SECURITY_TUNNEL_TYPE_EAP;
+            }
         }
     }
 
-    if( ent_parameters.is_client_cert_required == 1 )
+    /* Client certificate and key is mandatory only for EAP-TLS. For PEAP and EAP-TTLS it is optional.
+     * Hence passing NULL. However if it is required, for example if the radius server requires the client
+     * authentication for PEAP/TTLS, pass certificate and key to enterprise library.
+     */
+    if( CY_ENTERPRISE_SECURITY_EAP_TYPE_TLS == eap_type )
     {
         if( CY_ENTERPRISE_SECURITY_AUTH_TYPE_WPA3_192BIT == auth_type )
         {
